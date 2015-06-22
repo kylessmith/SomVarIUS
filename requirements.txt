@@ -1,0 +1,5 @@
+scipy
+numpy
+cython
+pysam
+pymix
