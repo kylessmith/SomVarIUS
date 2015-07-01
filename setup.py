@@ -36,7 +36,7 @@ setup(
     url='https://github.com/kylessmith/SomVarIUS',
     description='A Python utility for calling somatic mutations from a BAM or SAM file',
     ext_modules=cythonize(extensions),
-    scripts=['SomVarIUS/SomVarIUS', 'SomVarIUS/bb_fit.py', 'SomVarIUS/mix_bins.py', 'SomVarIUS/mixture_model.py'],
+    scripts=['SomVarIUS/SomVarIUS', 'SomVarIUS/bb_fit.py', 'SomVarIUS/mix_bins.py', 'SomVarIUS/mixture_model.py', 'SomVarIUS/assign_clones.py'],
     install_requires=["pysam>=0.8.1",
                       "numpy>=1.7.0",
                       "scipy>=0.13.0",

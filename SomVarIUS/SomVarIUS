@@ -6,6 +6,7 @@ import argparse
 import os, sys
 import pysam
 import cPickle
+from assign_clones import clones
 
 
 def dbsnp_pickle(args):
@@ -172,7 +173,8 @@ if __name__=='__main__':
     parser_mut = subparsers.add_parser('call_mutations', help='flag to call mutations')
     parser_sort = subparsers.add_parser('sort', help='flag to sort bam file and bed file by name')
     parser_pickle = subparsers.add_parser('pickle', help='flag to store the pickled germline positions from bed')
-
+    parser_clone = subparsers.add_parser('clones', help='flag to classify as clone or sub-clone')
+    
     parser_mut.add_argument('--bam', help='input bam file', required=True)
     parser_mut.add_argument('--ref', help='reference fasta file', required=True)
     parser_mut.add_argument('--out', help='output file', required=True)
@@ -208,6 +210,11 @@ if __name__=='__main__':
     parser_pickle.add_argument('--dbsnp', help='input dbsnp bed file', required=True)
     parser_pickle.add_argument('--dbsnp_out', help='name of pickled dbsnp file', required=True)
     parser_pickle.set_defaults(func=dbsnp_pickle)
+    
+    parser_clone.add_argument('--vcf', help='vcf file', required=True)
+    parser_clone.add_argument('--t', help='tumor purity (default=1.0)', default=1.0, type=float)
+    parser_clone.add_argument('--gmm', help='flag to classify by gaussian mixture model (default=False)', default=False, action='store_true')
+    parser_clone.set_defaults(func=clones)
     
     args=parser.parse_args()
     
