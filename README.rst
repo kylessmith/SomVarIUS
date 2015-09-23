@@ -107,7 +107,7 @@ Gives::
 	  --dbsnp_out DBSNP_OUT
 	                        name of pickled dbsnp file
 
-To classify mutations as clonal or sub-clonal:
+To classify mutations as clonal or sub-clonal::
 
 	$ SomVarIUS clones -h
 
@@ -182,6 +182,14 @@ file.
 
 Installation
 ============
+
+pip can be used to install by::
+
+	$ pip install SomVarIUS
+	
+or download from github and run:
+
+	$ python setup.py install
 
 If you dont already have numpy and scipy installed, it is best to download
 `Anaconda`, a python distribution that has them included.  
