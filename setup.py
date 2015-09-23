@@ -34,7 +34,7 @@ extensions.append(Extension('query_muts',
 
 setup(
     name='SomVarIUS',
-    version='0.1',
+    version='1.1',
     author='Kyle S. Smith',
     author_email='kyle.s.smith@ucdenver.edu',
     url='https://github.com/kylessmith/SomVarIUS',
