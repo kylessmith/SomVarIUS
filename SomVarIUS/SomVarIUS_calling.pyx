@@ -6,7 +6,6 @@ __version__ = '0.15'
 #try cimport BedTool, Interval
 from collections import OrderedDict
 import scipy.stats
-from mix_bins import find_bins
 import cPickle
 from libc.stdint cimport uint32_t, uint8_t, uint64_t, int64_t
 from libc.math cimport isnan
@@ -241,17 +240,11 @@ def get_dist(copy_record, Samfile samfile, dict ba_to_bed,
 						if previous_copy_region[1] != 'None':
 							if len(record[previous_copy_region]['alt_alleles']) >= 4:
 								chrom, start, end = previous_copy_region
-								if copy_bed:
-									alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
-																									np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
-									mean = alpha / (alpha+beta)
-									copy_list.append((chrom, start, end, alpha, beta, mean))
-								else:
-									binned_data = find_bins(record[previous_copy_region]['alt_alleles'],
-												record[previous_copy_region]['total_alleles'],
-												record[previous_copy_region]['pos'], chrom, genome[chrom], max_components=20)
+								alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
+																								np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
+								mean = alpha / (alpha+beta)
+								copy_list.append((chrom, start, end, alpha, beta, mean))
 								
-									copy_list += binned_data
 							del record[previous_copy_region]
 						previous_copy_region = copy_region
 					#print chrom, pos
@@ -285,17 +278,12 @@ def get_dist(copy_record, Samfile samfile, dict ba_to_bed,
 	
 	try:
 		if len(record[previous_copy_region]['alt_alleles']) >= 4:
-			if copy_bed:
-				alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
-																				np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
-				mean = alpha / (alpha+beta)
-				copy_list.append((chrom, start, end, alpha, beta, mean))
-			else:
-				binned_data = find_bins(record[previous_copy_region]['alt_alleles'],
-							record[previous_copy_region]['total_alleles'],
-							record[previous_copy_region]['pos'], chrom, genome[chrom], max_components=20)
+			chrom, start, end = previous_copy_region
+			alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
+																			np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
+			mean = alpha / (alpha+beta)
+			copy_list.append((chrom, start, end, alpha, beta, mean))
 			
-				copy_list += binned_data
 		del record[previous_copy_region]
 	except KeyError:
 		pass
@@ -514,7 +502,7 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 						  uint64_t min_mapq=55, str dbsnp_bed_name='',
 						  str copy_bed_name='', bint binom=False,
 						  region_chrom=None, region_start=None, region_end=None,
-						  int min_baseq=13, str dist='', bint whole=False):
+						  int min_baseq=13, str dist=''):
 
 	#out = open(out_file, mode='w')
 	fmt = '{chrom}\t{pos}\t.\t{refbase}\t{alt_allele}\t.\tPASS\t'
@@ -588,10 +576,9 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 		chrom_record, bed_chroms = filter_regions(dbsnp_bed_name, chrom_regions)
 		ba_to_bed = samfile_ref_dicts(samfile.references, bed_chroms)
 		print 'calculating chromosome allele frequency distribution...'
-		if whole:
-			copy_list = get_dist(chrom_record, samfile, ba_to_bed, min_reads, min_support, min_mapq, min_baseq, genome, copy_bed=True)
-		else:
-			copy_list = get_dist(chrom_record, samfile, ba_to_bed, min_reads, min_support, min_mapq, min_baseq, genome, copy_bed=False)
+
+		copy_list = get_dist(chrom_record, samfile, ba_to_bed, min_reads, min_support, min_mapq, min_baseq, genome, copy_bed=True)
+			
 		if dist != '':
 			dist_out = open(dist,"w")
 			for line in copy_list:
@@ -671,12 +658,6 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 			chrom = samfile.getrname(col.tid)
 			pos = col.pos + 1
 		
-			# check if hapmap filter is on
-			if hap_filter:
-				hapmap_present=hapmap_filter(ba_to_hapmap[chrom], pos, hapmap_record)
-				# if position is in hapmap file, then skip
-				if hapmap_present == 1:
-					continue
 			# loop over reads, extract what we need
 			for i from 0<=i < n:
 				read = &(plp[0][i])
@@ -700,6 +681,26 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 							_incr_count(&C, is_reverse, baseq, mapq)
 		
 			if A.pres+T.pres+G.pres+C.pres > 1:
+				
+				if hap_filter:
+					try:
+						hap_ref, hap_alt = hapmap_record[(ba_to_hapmap[chrom], pos)]
+						#check if there is more than one germline present
+						if len(hap_alt) > 1:
+							possible_germs = hap_alt.split(',')
+							alt_germ = eval(possible_germs[0])
+							for i in xrange(1, len(possible_germs)):
+								if eval(possible_germs[i])['count'] > alt_germ['count']:
+									alt_germ = eval(possible_germs[i])
+						else:
+							alt_germ = eval(hap_alt)
+									
+						if eval(hap_ref)['count'] > 0 and alt_germ['count'] > 0:
+							continue
+							
+					except KeyError:
+						pass
+						
 				counts, labels = get_highest(A.count,T.count,G.count,C.count)
 				maj_allele = labels[0]
 				maj_count = counts[0]

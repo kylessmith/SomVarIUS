@@ -7,7 +7,7 @@ Input files mapped reads must be in SAM or BAM format.
 
 Known germline mutation positions to be excluded must be in a pickled dictionary of dictionaries:
 
-	record[chromosome][position] = 1
+	record[(chromosome, position)] = (reference, alternate)
 	
 A built-in function is included to create this file from a BED file *(see Invocation)*
 
@@ -36,10 +36,12 @@ Running the following command will the available functions::
 Gives::
 
 	positional arguments:
-	  {call_mutations,sort,pickle}
+	  {call_mutations,sort,pickle,clones,query_mutations}
 	    call_mutations      flag to call mutations
 	    sort                flag to sort bam file and bed file by name
 	    pickle              flag to store the pickled germline positions from bed
+		clones              flag to classify as clone or sub-clone
+		query_mutations     flag to query given mutations in the bam
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -82,7 +84,6 @@ Gives::
 	  --start START         starting position
 	  --end END             ending position
 	  --dist DIST           write the beta binomial parameters to a file
-	  --per_chrom			flag to fit a single beta-binomial per chromosome (default=False)
 
 To sort a bam file and bed file by name the following command will show available inputs::
 
@@ -106,6 +107,33 @@ Gives::
 	  --dbsnp_out DBSNP_OUT
 	                        name of pickled dbsnp file
 
+To classify mutations as clonal or sub-clonal:
+
+	$ SomVarIUS clones -h
+
+Gives::
+
+	  --vcf VCF   vcf file
+	  --t T       tumor purity (default=1.0)
+	  --gmm       flag to classify by gaussian mixture model (default=False)
+
+To query a list of mutations in bed format (chrom  start  end  ref  alt)::
+
+	$ SomVarIUS query_mutations -h
+	
+Gives::
+
+	  --bam BAM             input bam file
+	  --out OUT             output file
+	  --muts MUTS           mutation bed file
+	  --min_reads MIN_READS
+	                        minimum base coverage (default=10)
+	  --min_support MIN_SUPPORT
+	                        minimum number of reads supported alternate allele
+	                        (default=4)
+	  --min_mapq MIN_MAPQ   minimum mapping quality (default=55)
+	  --min_baseq MIN_BASEQ
+	                        minimum base quality (default=13)
 		
 QuickStart
 ==========
@@ -140,7 +168,7 @@ Then run::
 	$ SomVarIUS call_mutations \
 		--bam chr20.bam \
 		--ref chr20.fa \
-		--out chr20.txt \
+		--out chr20.vcf \
 		--germ_pos chr20_dbsnp.pickle \
 		--dbsnp_bed chr20_dbsnp.bed \
 		--dist dist.txt \
@@ -148,7 +176,7 @@ Then run::
 		--ref_filter
 		
 The first time this is run the program will detect the files have not been index and index them.
-The results will be in *chr20.txt* file and the *dist.txt* will have the estimated parameters 
+The results will be in *chr20.vcf* file and the *dist.txt* will have the estimated parameters 
 for the fitted beta-binomial distribution. The arguments used are recorded in the *chr20_args.txt*
 file.
 

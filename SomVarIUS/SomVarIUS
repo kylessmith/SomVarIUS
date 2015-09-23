@@ -7,6 +7,38 @@ import os, sys
 import pysam
 import cPickle
 from assign_clones import clones
+from query_muts import query_mutations
+
+
+def query_given_muts(args):
+    
+    muts_fn = args.muts
+    samfile_name = args.bam
+    min_mapq = args.min_mapq
+    min_baseq = args.min_baseq
+    min_support = args.min_support
+    min_reads = args.min_reads
+    out_fn = args.out
+    
+    out_file = open(out_fn, 'w')
+    out_file.write('##fileformat=VCFv4.0\n')
+    out_file.write('##source=SomVarIUS_V1.1\n')
+    out_file.write('##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">\n')
+    out_file.write('##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">\n')
+    out_file.write('##INFO=<ID=AF,Number=.,Type=Float,Description="Allele Frequency">\n')
+    out_file.write('##INFO=<ID=P,Number=.,Type=Float,Description="Combined Pvalue">\n')
+    out_file.write('##INFO=<ID=SP,Number=.,Type=Float,Description="Sequencing Error Pvalue">\n')
+    out_file.write('##INFO=<ID=GP,Number=.,Type=Float,Description="Germline Mutation Pvalue">\n')
+    out_file.write('##INFO=<ID=MQ,Number=.,Type=Float,Description="Mean Mapping Quality">\n')
+    out_file.write('##INFO=<ID=BQ,Number=.,Type=Float,Description="Mean Alternate Base Quality">\n')
+    out_file.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+    out_file.write('##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">\n')
+    out_file.write('##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">\n')
+    out_file.close()
+    
+    print 'Querying mutations'
+    query_mutations(muts_fn, samfile_name, min_mapq, min_baseq, min_reads,
+                    min_support, out_fn)
 
 
 def dbsnp_pickle(args):
@@ -16,11 +48,15 @@ def dbsnp_pickle(args):
 
     germ_pos = {}
     for line in open(dbsnpfile_name, 'r'):
-        chrom, pos = line.strip().split('\t')[:2]
+        fields = line.strip().split('\t')
+        chrom = fields[0]
+        pos = int(fields[1])
+        ref = fields[3]
+        alt = fields[4]
         try:
-            germ_pos[chrom][pos] = 1
+            germ_pos[(chrom, pos)] = (ref, alt)
         except KeyError:
-            germ_pos[chrom] = {}
+            germ_pos[(chrom, pos)] = {}
 
     cPickle.dump(germ_pos, open(out_pickle,'w'))
 
@@ -68,7 +104,6 @@ def get_mutations(args):
     min_baseq = args.min_baseq
     dbsnp_bed_name = args.dbsnp_bed
     copy_bed_name = args.copy_bed
-    whole = args.per_chrom
     rna_filter = False
     hap_filter = False
     binom = args.binom
@@ -139,11 +174,11 @@ def get_mutations(args):
     results = write_mutations(out, ba, fa, rna_seq, germ_pos, min_reads, min_support,
                     min_af, min_pvalue, min_fr, rna_filter, hap_filter, min_qual,
                     min_se, min_hetero, ref_filter, min_mapq, dbsnp_bed_name,
-                    copy_bed_name, binom, chrom, start, end, min_baseq, dist, whole)
+                    copy_bed_name, binom, chrom, start, end, min_baseq, dist)
     out_file = open(out,'w')
     
     out_file.write('##fileformat=VCFv4.0\n')
-    out_file.write('##source=UniSam_V0.15\n')
+    out_file.write('##source=SomVarIUS_V1.1\n')
     out_file.write('##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">\n')
     out_file.write('##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">\n')
     out_file.write('##INFO=<ID=AF,Number=.,Type=Float,Description="Allele Frequency">\n')
@@ -174,6 +209,7 @@ if __name__=='__main__':
     parser_sort = subparsers.add_parser('sort', help='flag to sort bam file and bed file by name')
     parser_pickle = subparsers.add_parser('pickle', help='flag to store the pickled germline positions from bed')
     parser_clone = subparsers.add_parser('clones', help='flag to classify as clone or sub-clone')
+    parser_query = subparsers.add_parser('query_mutations', help='flag to query given mutations in the bam')
     
     parser_mut.add_argument('--bam', help='input bam file', required=True)
     parser_mut.add_argument('--ref', help='reference fasta file', required=True)
@@ -198,7 +234,6 @@ if __name__=='__main__':
     parser_mut.add_argument('--start', help='starting position', default=None)
     parser_mut.add_argument('--end', help='ending position', default=None)
     parser_mut.add_argument('--dist', help='write the beta binomial parameters to a file', default='')
-    parser_mut.add_argument('--per_chrom', help='flag to fit a single beta-binomial per chromosome (default=False)',default=False, action='store_true')
     parser_mut.set_defaults(func=get_mutations)
     
     parser_sort.add_argument('--bam', help='input bam file', required=True)
@@ -215,6 +250,15 @@ if __name__=='__main__':
     parser_clone.add_argument('--t', help='tumor purity (default=1.0)', default=1.0, type=float)
     parser_clone.add_argument('--gmm', help='flag to classify by gaussian mixture model (default=False)', default=False, action='store_true')
     parser_clone.set_defaults(func=clones)
+    
+    parser_query.add_argument('--bam', help='input bam file', required=True)
+    parser_query.add_argument('--out', help='output file', required=True)
+    parser_query.add_argument('--muts', help='mutation bed file', required=True)
+    parser_query.add_argument('--min_reads', help='minimum base coverage (default=10)',type=int, default=10)
+    parser_query.add_argument('--min_support', help='minimum number of reads supported alternate allele (default=4)',type=int, default=4)
+    parser_query.add_argument('--min_mapq', help='minimum mapping quality (default=55)',type=int, default=55)
+    parser_query.add_argument('--min_baseq', help='minimum base quality (default=13)',type=int, default=13)
+    parser_query.set_defaults(func=query_given_muts)
     
     args=parser.parse_args()
     
