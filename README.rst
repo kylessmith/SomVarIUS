@@ -187,7 +187,7 @@ pip can be used to install by::
 
 	$ pip install SomVarIUS
 	
-or download from github and run:
+or download from github and run::
 
 	$ python setup.py install
 
