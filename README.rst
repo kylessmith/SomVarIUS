@@ -5,7 +5,7 @@ Data Format
 
 Input files mapped reads must be in SAM or BAM format.
 
-Known germline mutation positions to be excluded must be in a pickled dictionary of dictionaries:
+Known germline mutation positions to be excluded must be in a pickled dictionary of dictionaries::
 
 	record[(chromosome, position)] = (reference, alternate)
 	
@@ -68,7 +68,7 @@ Gives::
 	  --min_af MIN_AF       minimum allele frequency (default=0.05)
 	  --min_pvalue MIN_PVALUE
 	                        minimum pvalue (default=0.001)
-	  --min_fr MIN_FR       minimum reverse/forward read ratio (default=0.05)
+	  --max_SB MIN_FR       maximum SB score for reverse/forward read ratio (default=0.8)
 	  --min_qual MIN_QUAL   minimum mean quality for alternate allele (default=25)
 	  --min_se MIN_SE       minimum probability not sequencing error
 	                        (default=0.999)
