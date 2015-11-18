@@ -204,4 +204,4 @@ The program also depends on Samtools which is available from https://github.com/
 
 License
 ============
-'SomVarIUS' is freely available under the MIT [license](https://github.com/arq5x/gemini/blob/master/LICENSE).
+SomVarIUS is freely available under the MIT license (https://github.com/arq5x/gemini/blob/master/LICENSE).
