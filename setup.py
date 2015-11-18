@@ -37,6 +37,7 @@ setup(
     version='1.2',
     author='Kyle S. Smith',
     author_email='kyle.s.smith@ucdenver.edu',
+    license="MIT Licenses",
     url='https://github.com/kylessmith/SomVarIUS',
     description='A Python utility for calling somatic mutations from a BAM or SAM file',
     ext_modules=cythonize(extensions),
