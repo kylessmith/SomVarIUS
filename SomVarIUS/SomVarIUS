@@ -95,7 +95,7 @@ def get_mutations(args):
     min_support = args.min_support
     min_af = args.min_af
     min_pvalue = args.min_pvalue
-    min_fr = args.min_fr
+    max_SB = args.max_SB
     min_qual = args.min_qual
     min_se = args.min_se
     min_hetero = args.min_hetero
@@ -114,7 +114,7 @@ def get_mutations(args):
     fmt = '--bam {args.bam} --ref {args.ref} --out {args.out} '
     fmt += '--germ_pos {args.germ_pos} --dbsnp_bed {args.dbsnp_bed} '
     fmt += '--min_reads {args.min_reads} --min_support {args.min_support} '
-    fmt += '--min_af {args.min_af} --min_pvalue {args.min_pvalue} --min_fr {args.min_fr} '
+    fmt += '--min_af {args.min_af} --min_pvalue {args.min_pvalue} --min_fr {args.max_SB} '
     fmt += '--min_qual {args.min_qual} --min_se {args.min_se} '
     fmt += '--min_hetero {args.min_hetero} --min_mapq {args.min_mapq} '
     fmt += '--ref_filter {args.ref_filter} --dbsnp_bed {args.dbsnp_bed} '
@@ -172,7 +172,7 @@ def get_mutations(args):
     
     start = time.clock()
     results = write_mutations(out, ba, fa, rna_seq, germ_pos, min_reads, min_support,
-                    min_af, min_pvalue, min_fr, rna_filter, hap_filter, min_qual,
+                    min_af, min_pvalue, max_SB, rna_filter, hap_filter, min_qual,
                     min_se, min_hetero, ref_filter, min_mapq, dbsnp_bed_name,
                     copy_bed_name, binom, chrom, start, end, min_baseq, dist)
     out_file = open(out,'w')
@@ -222,7 +222,7 @@ if __name__=='__main__':
     parser_mut.add_argument('--min_support', help='minimum number of reads supported alternate allele (default=4)',type=int, default=4)
     parser_mut.add_argument('--min_af', help='minimum allele frequency (default=0.05)',type=float, default=0.05)
     parser_mut.add_argument('--min_pvalue', help='minimum pvalue (default=0.0001)', type=float, default=0.0001)
-    parser_mut.add_argument('--min_fr', help='minimum reverse/forward read ratio (default=0.05)',type=float, default=0.05)
+    parser_mut.add_argument('--max_SB', help='maximum SB score for reverse/forward read ratio (default=0.8)',type=float, default=0.8)
     parser_mut.add_argument('--min_qual', help='minimum mean quality for alternate allele (default=25)',type=int, default=25)
     parser_mut.add_argument('--min_se', help='minimum probability not sequencing error (default=0.999)',type=float, default=0.999)
     parser_mut.add_argument('--min_hetero', help='minimum probability not germline (default=0.95)',type=float, default=0.95)

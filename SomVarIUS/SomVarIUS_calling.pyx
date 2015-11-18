@@ -12,7 +12,8 @@ from libc.math cimport isnan
 from cpython cimport PyBytes_FromStringAndSize
 from pysam.chtslib cimport bam1_t, bam_pileup1_t
 from pysam.cfaidx cimport Fastafile
-from pysam.calignmentfile cimport PileupColumn
+#from pysam.calignmentfile cimport PileupColumn
+from pysam.calignedsegment cimport PileupColumn
 from pysam.csamfile cimport Samfile, \
     pysam_bam_get_seq, pysam_bam_get_qual
 
@@ -20,6 +21,24 @@ from scipy.special import gammaln
 from scipy.misc import factorial
 import numpy as np
 cimport numpy as np
+
+
+cdef float calculate_SB( _CountAllele major_allele, _CountAllele minor_allele):
+	
+	cdef float a,b,c,d,SB
+	
+	try:
+		a = float(major_allele.fwd)
+		c = float(major_allele.rev)
+		b = float(minor_allele.fwd)
+		d = float(minor_allele.rev)
+
+		SB = abs((b/(a+b)-(d/(c+d))) / ((b+d)/(a+b+c+d)))
+	
+	except ZeroDivisionError:
+		SB = 1.0
+	
+	return SB
 
 
 cdef tuple fit_beta_binomial(np.ndarray[np.double_t, ndim=1] xi,
@@ -62,6 +81,7 @@ cdef extern from "math.h":
 	long double exp(long double x)
 	long double fmax(long double x, long double y)
 	long double sqrt(long double x)
+	long double abs(long double x)
 
 ## These are bits set in the flag.
 ## have to put these definitions here, in csamtools.pxd they got ignored
@@ -204,74 +224,75 @@ def get_dist(copy_record, Samfile samfile, dict ba_to_bed,
 			dbsnp_maj_allele = alleles[0]
 			dbsnp_alt_alleles = alleles[1]
 			n = col.n
-			plp = col.plp
-			for i from 0<=i < n:
-				read = &(plp[0][i])
-				if read.indel == 0 and read.is_del == False:
-					aln = read.b
-					alnbase = _get_seq_base(aln, read.qpos)
-					flag = aln.core.flag
-					is_proper_pair = <bint>(flag & BAM_FPROPER_PAIR)
-					mapq = aln.core.qual
-					baseq = pysam_bam_get_qual(aln)[read.qpos]
-					if mapq >= min_mapq and baseq >= min_baseq and is_proper_pair:
-						if alnbase == b'A':
-							_incr_count(&A, is_reverse, baseq, mapq)
-						elif alnbase == b'T':
-							_incr_count(&T, is_reverse, baseq, mapq)
-						elif alnbase == b'G':
-							_incr_count(&G, is_reverse, baseq, mapq)
-						elif alnbase == b'C':
-							_incr_count(&C, is_reverse, baseq, mapq)
-			if A.pres+T.pres+G.pres+C.pres > 1:
-				counts, labels = get_highest(A.count,T.count,G.count,C.count)
-				obs_alleles = set([labels[i] for i in xrange(len(labels)) if counts[i]>0])
-				#print
-				#print "obs", obs_alleles
-				dbsnp_obs_overlap = obs_alleles & dbsnp_alt_alleles
-				#print "dbsnp", dbsnp_obs_overlap
-				#print "dbsnp", dbsnp_maj_allele
-				if len(dbsnp_obs_overlap) > 0 and dbsnp_maj_allele in obs_alleles:
-					copy_region = copy_record[(ba_to_bed[chrom],pos)][0:3]
-					try:
-						record[copy_region]
-					except KeyError:
-						record[copy_region]={'total_alleles':[], 'alt_alleles':[], 'pos':[]}
-						if previous_copy_region[1] != 'None':
-							if len(record[previous_copy_region]['alt_alleles']) >= 4:
-								chrom, start, end = previous_copy_region
-								alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
-																								np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
-								mean = alpha / (alpha+beta)
-								copy_list.append((chrom, start, end, alpha, beta, mean))
+			if n >= min_reads:
+				plp = col.plp
+				for i from 0<=i < n:
+					read = &(plp[0][i])
+					if read.indel == 0 and read.is_del == False:
+						aln = read.b
+						alnbase = _get_seq_base(aln, read.qpos)
+						flag = aln.core.flag
+						is_proper_pair = <bint>(flag & BAM_FPROPER_PAIR)
+						mapq = aln.core.qual
+						baseq = pysam_bam_get_qual(aln)[read.qpos]
+						if mapq >= min_mapq and baseq >= min_baseq and is_proper_pair:
+							if alnbase == b'A':
+								_incr_count(&A, is_reverse, baseq, mapq)
+							elif alnbase == b'T':
+								_incr_count(&T, is_reverse, baseq, mapq)
+							elif alnbase == b'G':
+								_incr_count(&G, is_reverse, baseq, mapq)
+							elif alnbase == b'C':
+								_incr_count(&C, is_reverse, baseq, mapq)
+				if A.pres+T.pres+G.pres+C.pres > 1:
+					counts, labels = get_highest(A.count,T.count,G.count,C.count)
+					obs_alleles = set([labels[i] for i in xrange(len(labels)) if counts[i]>0])
+					#print
+					#print "obs", obs_alleles
+					dbsnp_obs_overlap = obs_alleles & dbsnp_alt_alleles
+					#print "dbsnp", dbsnp_obs_overlap
+					#print "dbsnp", dbsnp_maj_allele
+					if len(dbsnp_obs_overlap) > 0 and dbsnp_maj_allele in obs_alleles:
+						copy_region = copy_record[(ba_to_bed[chrom],pos)][0:3]
+						try:
+							record[copy_region]
+						except KeyError:
+							record[copy_region]={'total_alleles':[], 'alt_alleles':[], 'pos':[]}
+							if previous_copy_region[1] != 'None':
+								if len(record[previous_copy_region]['alt_alleles']) >= 4:
+									chrom, start, end = previous_copy_region
+									alpha, beta = fit_beta_binomial(np.array(record[previous_copy_region]['alt_alleles'],dtype=np.float64),
+																									np.array(record[previous_copy_region]['total_alleles'],dtype=np.float64))
+									mean = alpha / (alpha+beta)
+									copy_list.append((chrom, start, end, alpha, beta, mean))
 								
-							del record[previous_copy_region]
-						previous_copy_region = copy_region
-					#print chrom, pos
-					#print copy_region
-					total_counts = float(A.count+T.count+C.count+G.count)
-					if total_counts >= min_reads:
-						for base in dbsnp_obs_overlap:
-							if base == 'A' and A.count >= min_support and total_counts-A.count >= min_support:
-								record[copy_region]['alt_alleles'].append(A.count)
-								record[copy_region]['total_alleles'].append(total_counts)
-								record[copy_region]['pos'].append(pos)
-								break
-							elif base == 'T' and T.count >= min_support and total_counts-T.count >= min_support:
-								record[copy_region]['alt_alleles'].append(T.count)
-								record[copy_region]['total_alleles'].append(total_counts)
-								record[copy_region]['pos'].append(pos)
-								break
-							elif base == 'G' and G.count >= min_support and total_counts-G.count >= min_support:
-								record[copy_region]['alt_alleles'].append(G.count)
-								record[copy_region]['total_alleles'].append(total_counts)
-								record[copy_region]['pos'].append(pos)
-								break
-							elif base == 'C' and C.count >= min_support and total_counts-C.count >= min_support:
-								record[copy_region]['alt_alleles'].append(C.count)
-								record[copy_region]['total_alleles'].append(total_counts)
-								record[copy_region]['pos'].append(pos)
-								break
+								del record[previous_copy_region]
+							previous_copy_region = copy_region
+						#print chrom, pos
+						#print copy_region
+						total_counts = float(A.count+T.count+C.count+G.count)
+						if total_counts >= min_reads:
+							for base in dbsnp_obs_overlap:
+								if base == 'A' and A.count >= min_support and total_counts-A.count >= min_support:
+									record[copy_region]['alt_alleles'].append(A.count)
+									record[copy_region]['total_alleles'].append(total_counts)
+									record[copy_region]['pos'].append(pos)
+									break
+								elif base == 'T' and T.count >= min_support and total_counts-T.count >= min_support:
+									record[copy_region]['alt_alleles'].append(T.count)
+									record[copy_region]['total_alleles'].append(total_counts)
+									record[copy_region]['pos'].append(pos)
+									break
+								elif base == 'G' and G.count >= min_support and total_counts-G.count >= min_support:
+									record[copy_region]['alt_alleles'].append(G.count)
+									record[copy_region]['total_alleles'].append(total_counts)
+									record[copy_region]['pos'].append(pos)
+									break
+								elif base == 'C' and C.count >= min_support and total_counts-C.count >= min_support:
+									record[copy_region]['alt_alleles'].append(C.count)
+									record[copy_region]['total_alleles'].append(total_counts)
+									record[copy_region]['pos'].append(pos)
+									break
 
 		except KeyError:
 			pass
@@ -495,7 +516,7 @@ cdef dict samfile_ref_dicts(samfile_refs, other_refs):
 def write_mutations(str out_file, str samfile_name, str fafile_name,
 						  str rna_seq_file_name='', str hapmap_file='',
                           int min_reads=10, int min_support=4, double min_af=0.05,
-						  double min_pvalue=0.0001, double min_f_r=0.05,
+						  double min_pvalue=0.0001, double max_SB=0.8,
 						  bint rna_filter=False, bint hap_filter=False,
 						  int min_qual=25, double min_se=0.999,
 						  double min_hetero=0.95, bint ref_filter=False,
@@ -640,6 +661,7 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 	cdef long double pvalue, prob_not_se, prob_not_hetero
 	cdef double delta, reverse, forward
 	cdef double rna_seq
+	cdef double SB
 
 	print 'calling mutations'
 
@@ -718,25 +740,29 @@ def write_mutations(str out_file, str samfile_name, str fafile_name,
 					if alt_allele == 'A':
 						mean_mapq = A.mapqual / float(A.count)
 						mean_qual = A.qual / A.count
-						fwd_ratio = A.fwd / float(A.fwd+A.rev)
-						rvs_ratio = A.rev / float(A.fwd+A.rev)
+						SB = calculate_SB(A, eval(maj_allele))
+						#fwd_ratio = A.fwd / float(A.fwd+A.rev)
+						#rvs_ratio = A.rev / float(A.fwd+A.rev)
 					elif alt_allele == 'T':
 						mean_mapq = T.mapqual / float(T.count)
 						mean_qual = T.qual / T.count
-						fwd_ratio = T.fwd / float(T.fwd+T.rev)
-						rvs_ratio = T.rev / float(T.fwd+T.rev)
+						SB = calculate_SB(T, eval(maj_allele))
+						#fwd_ratio = T.fwd / float(T.fwd+T.rev)
+						#rvs_ratio = T.rev / float(T.fwd+T.rev)
 					elif alt_allele == 'G':
 						mean_mapq = G.mapqual / float(G.count)
 						mean_qual = G.qual / G.count
-						fwd_ratio = G.fwd / float(G.fwd+G.rev)
-						rvs_ratio = G.rev / float(G.fwd+G.rev)
+						SB = calculate_SB(G, eval(maj_allele))
+						#fwd_ratio = G.fwd / float(G.fwd+G.rev)
+						#rvs_ratio = G.rev / float(G.fwd+G.rev)
 					elif alt_allele == 'C':
 						mean_mapq = C.mapqual / float(C.count)
 						mean_qual = C.qual / C.count
-						fwd_ratio = C.fwd / float(C.fwd+C.rev)
-						rvs_ratio = C.rev / float(C.fwd+C.rev)
+						SB = calculate_SB(C, eval(maj_allele))
+						#fwd_ratio = C.fwd / float(C.fwd+C.rev)
+						#rvs_ratio = C.rev / float(C.fwd+C.rev)
 
-					if alt_count >= min_support and fwd_ratio >= min_f_r and rvs_ratio >= min_f_r and mean_qual >= min_qual and mean_mapq >= min_mapq:
+					if alt_count >= min_support and SB <= max_SB and mean_qual >= min_qual and mean_mapq >= min_mapq:
 						total_baseq = fmax(1e-25,total_baseq)
 						delta = (alt_count/total_baseq) - 1
 						total_alleles = A.count+T.count+C.count+G.count
