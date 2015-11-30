@@ -1,4 +1,7 @@
-from pymix import mixture
+try:
+    from pymix import mixture
+except ImportError:
+    raise Exception('please install pymix first, e.g.: pip install pymix')
 import argparse
 from random import random
 import numpy as np

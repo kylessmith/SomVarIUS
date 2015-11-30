@@ -45,7 +45,7 @@ setup(
     install_requires=["pysam>=0.8.1",
                       "numpy>=1.7.0",
                       "scipy>=0.12.0",
-                      "pymix"],
+                      ],
     classifiers=['Programming Language :: Python',
                  ],
 )
