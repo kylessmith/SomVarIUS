@@ -6,8 +6,8 @@ import argparse
 import os, sys
 import pysam
 import cPickle
-from assign_clones import clones
 from query_muts import query_mutations
+from assign_clones import clones
 
 
 def query_given_muts(args):

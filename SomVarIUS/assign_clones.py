@@ -1,4 +1,3 @@
-from mixture_model import mixture_model
 import numpy as np
 import scipy.stats as stats
 import argparse, sys
@@ -9,6 +8,7 @@ def classify_clones(allele_frequencies, coverage=None, tumor_purity=1.0, gmm=Fal
     clone_labels = np.empty(len(allele_frequencies), dtype='S9')
     
     if gmm == True:
+        from mixture_model import mixture_model
         best_model, labels, bic = mixture_model(allele_frequencies, 10, p_mean=tumor_purity/2, p_std=0.1, quiet=True)
         c = best_model.components
         clonal_label = 0
@@ -36,6 +36,12 @@ def classify_clones(allele_frequencies, coverage=None, tumor_purity=1.0, gmm=Fal
         return clone_labels
 
 def clones(args):
+    
+    try:
+        import pymix
+    except ImportError:
+        print 'pymix not installed, gmm flag disabled'
+    
     vcf = args.vcf
     tumor_purity = args.t
     gmm = args.gmm
