@@ -1,8 +1,8 @@
 from libc.stdint cimport uint32_t, uint8_t, uint64_t, int64_t
 from cpython cimport PyBytes_FromStringAndSize
-from pysam.chtslib cimport bam1_t, bam_pileup1_t
-from pysam.calignmentfile cimport PileupColumn
-from pysam.csamfile cimport Samfile, \
+from pysam.libchtslib cimport bam1_t, bam_pileup1_t
+from pysam.libcalignmentfile cimport PileupColumn
+from pysam.libcsamfile cimport Samfile, \
     pysam_bam_get_seq, pysam_bam_get_qual
 
 
