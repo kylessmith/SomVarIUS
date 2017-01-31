@@ -2,7 +2,7 @@
 # cython: embedsignature=True
 
 
-__version__ = '0.15'
+__version__ = '0.16'
 #try cimport BedTool, Interval
 from collections import OrderedDict
 import scipy.stats
@@ -10,11 +10,11 @@ import cPickle
 from libc.stdint cimport uint32_t, uint8_t, uint64_t, int64_t
 from libc.math cimport isnan
 from cpython cimport PyBytes_FromStringAndSize
-from pysam.chtslib cimport bam1_t, bam_pileup1_t
-from pysam.cfaidx cimport Fastafile
+from pysam.libchtslib cimport bam1_t, bam_pileup1_t
+from pysam.libcfaidx cimport Fastafile
 #from pysam.calignmentfile cimport PileupColumn
-from pysam.calignedsegment cimport PileupColumn
-from pysam.csamfile cimport Samfile, \
+from pysam.libcalignedsegment cimport PileupColumn
+from pysam.libcsamfile cimport Samfile, \
     pysam_bam_get_seq, pysam_bam_get_qual
 
 from scipy.special import gammaln
