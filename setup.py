@@ -42,7 +42,7 @@ setup(
     description='A Python utility for calling somatic mutations from a BAM or SAM file',
     ext_modules=cythonize(extensions),
     scripts=['SomVarIUS/SomVarIUS', 'SomVarIUS/bb_fit.py','SomVarIUS/mixture_model.py', 'SomVarIUS/assign_clones.py'],
-    install_requires=["pysam>=0.8.1",
+    install_requires=["pysam>=0.10.0",
                       "numpy>=1.7.0",
                       "scipy>=0.12.0",
                       ],
